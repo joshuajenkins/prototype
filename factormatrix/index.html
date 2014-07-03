@@ -1,0 +1,587 @@
+<!doctype html>
+<html>
+	<head>
+  <title>Factor matrix prototype</title>
+
+  <style type="text/css">
+
+    body {
+      font-family: "Colfax";
+    } 
+
+    #matrix {
+      margin: 100px auto;
+    }
+
+    thead td {
+      font-size: 12px;
+      text-align: center;
+      padding-bottom: 8px;
+      color: rgb(180,180,180);
+    }
+
+    thead td.active {
+      color: rgb(100,100,100);
+    }
+
+    .heading {
+      border-right: 1px solid #ddd;
+      padding-right: 12px;
+    }
+
+    .heading p {
+      margin: 0;
+      font-size: 12px;
+      text-align: right;
+      color: rgb(180,180,180);
+    }
+
+    .heading.active p {
+      color: rgb(100,100,100);
+    }
+
+    .heading .subtitle {
+      color: rgb(200,200,200);
+    }
+
+    .cell {
+      padding: 0;
+      border-top: 1px solid #ddd;
+      border-right: 1px solid #ddd;
+      width: 60px;
+      height: 60px;
+      box-sizing: border-box;
+      background-color: #fff;
+      transition: background-color linear 0.1s;
+    }
+
+    .cell.tentative-up {
+      background: transparent url('images/star-inactive.svg') no-repeat center center;
+    }
+    .cell.tentative-down {
+      background: transparent url('images/x-inactive.svg') no-repeat center center;
+    }
+    .cell.is-up {
+      background: transparent url('images/star.svg') no-repeat center center;
+    }
+    .cell.is-down {
+      background: transparent url('images/x.svg') no-repeat center center;
+    }
+
+    .cell .up,
+    .cell .down {
+      background-color: #fff;
+      display: block;
+      height: 30px;
+      box-sizing: border-box;
+      border: 2px solid black;
+      opacity: 0;
+    }
+
+    .cell .up {
+      border-color: #F5BE23;
+      background: #fff url('images/star-small-active.svg') no-repeat center center;
+    }
+
+    .cell .down {
+      border-color: #F14F4E;
+      background: #fff url('images/x-small-active.svg') no-repeat center center;
+    }
+
+    .cell:hover .up,
+    .cell:hover .down {
+      opacity: 1;
+    }
+
+    .cell:hover .up:hover {
+      background-color: #F5BE23;
+      background-image: url('images/star-small-white.svg');
+    }
+
+    .cell:hover .down:hover {
+      background-color: #F14F4E;
+      background-image: url('images/x-small-white.svg');
+    }
+
+    .cell.is-up:hover .up {
+      background-color: #F5BE23;
+      background-image: url('images/star-small-white.svg');
+    }
+
+    .cell.is-up:hover .down {
+      border-color: #ddd;
+      background-image: url('images/x-small-inactive.svg');
+    }
+
+    .cell.is-up:hover .down:hover {
+      border-color: #F14F4E;
+      background-image: url('images/x-small-active.svg');
+      background-color: #fff;
+    }
+
+    .cell.is-down:hover .down {
+      background-color: #F14F4E;
+      background-image: url('images/x-small-white.svg');
+    }
+
+    .cell.is-down:hover .up {
+      border-color: #ddd;
+      background-image: url('images/star-small-inactive.svg');
+    }
+
+    .cell.is-down:hover .up:hover {
+      border-color: #F5BE23;
+      background-image: url('images/star-small-active.svg');
+      background-color: #fff;
+    }
+
+    .cell.fake-hover {
+      background-color: rgb(238,238,238);
+    }
+
+    .cell:hover {
+      cursor: pointer;
+    }
+
+    .col-actions {
+      border-top: 1px solid #ddd;
+      height: 30px;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .row-actions {
+      width: 30px;
+      padding: 0;
+    }
+
+    .row-actions > .up,
+    .row-actions > .down,
+    .col-actions > .up,
+    .col-actions > .down {
+      display: block;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      opacity: 0;
+      transition: opacity linear 0.1s;
+      cursor: pointer;
+    }
+
+    .row-actions > .up,
+    .col-actions > .up {
+      background: transparent url('images/star-small-inactive.svg') no-repeat center center;
+    }
+
+    .row-actions > .down,
+    .col-actions > .down {
+      background: transparent url('images/x-small-inactive.svg') no-repeat center center;
+    }
+
+    .col-actions > .up,
+    .col-actions > .down {
+      float: left;
+    }
+
+    .col-actions.active > .down,
+    .col-actions:hover > .down,
+    .col-actions.active > .up,
+    .col-actions:hover > .up,
+    .row-actions.active > .down,
+    .row-actions:hover > .down,
+    .row-actions.active > .up,
+    .row-actions:hover > .up {
+      opacity: 1;
+    }
+
+  </style>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script>
+
+    var handleHover = function(row, col) {
+      $('.cell[data-row=' + row + ']').addClass('fake-hover');
+      $('.cell[data-col=' + col + ']').addClass('fake-hover');
+      $('.row-actions[data-row=' + row + ']').addClass("active");
+      $('.col-actions[data-col=' + col + ']').addClass("active");
+      $('.heading[data-row=' + row + ']').addClass("active");
+      $('thead td[data-col=' + col + ']').addClass("active");
+    };
+
+    var handleHoverOut = function(row, col) {
+      $('.cell[data-row=' + row + ']').removeClass('fake-hover');
+      $('.cell[data-col=' + col + ']').removeClass('fake-hover');
+      $('.row-actions[data-row=' + row + ']').removeClass("active");
+      $('.col-actions[data-col=' + col + ']').removeClass("active");
+      $('.heading[data-row=' + row + ']').removeClass("active");
+      $('thead td[data-col=' + col + ']').removeClass("active");
+    };
+
+    $(document).ready(function() {
+
+      $('.cell').hover(function() {
+        handleHover($(this).data('row'), $(this).data('col'));
+      }, function() {
+        handleHoverOut($(this).data('row'), $(this).data('col'));
+      });
+
+      $('.cell .up').on('click', function() {
+        var parent = $(this).parent('.cell');
+        $(parent).removeClass('is-down');
+        $(parent).toggleClass('is-up');
+      });
+
+      $('.cell .down').on('click', function() {
+        var parent = $(this).parent('.cell');
+        $(parent).removeClass('is-up');
+        $(parent).toggleClass('is-down');
+      });
+
+      $('.row-actions .up').hover(function() {
+        $('.cell[data-row=' + $(this).data('row') + ']').addClass('tentative-up');
+      }, function() {
+        $('.cell[data-row=' + $(this).data('row') + ']').removeClass('tentative-up');
+      }).on('click', function() {
+        var count = $('.cell[data-row=' + $(this).data('row') + '].is-up').length;
+        if (count != 7 ) {
+          $('.cell[data-row=' + $(this).data('row') + ']').removeClass('is-down');
+          $('.cell[data-row=' + $(this).data('row') + ']').addClass('is-up');
+        } else {
+          $('.cell[data-row=' + $(this).data('row') + ']').removeClass('is-up');
+        }
+      });
+
+      $('.row-actions .down').hover(function() {
+        $('.cell[data-row=' + $(this).data('row') + ']').addClass('tentative-down');
+      }, function() {
+        $('.cell[data-row=' + $(this).data('row') + ']').removeClass('tentative-down');
+      }).on('click', function() {
+        var count = $('.cell[data-row=' + $(this).data('row') + '].is-down').length;
+        if (count != 7 ) {
+          $('.cell[data-row=' + $(this).data('row') + ']').removeClass('is-up');
+          $('.cell[data-row=' + $(this).data('row') + ']').addClass('is-down');
+        } else {
+          $('.cell[data-row=' + $(this).data('row') + ']').removeClass('is-down');
+        }
+      });
+
+      $('.col-actions .up').hover(function() {
+        $('.cell[data-col=' + $(this).data('col') + ']').addClass('tentative-up');
+      }, function() {
+        $('.cell[data-col=' + $(this).data('col') + ']').removeClass('tentative-up');
+      }).on('click', function() {
+        var count = $('.cell[data-col=' + $(this).data('col') + '].is-up').length;
+        console.log(count);
+        if (count != 6 ) {
+          $('.cell[data-col=' + $(this).data('col') + ']').removeClass('is-down');
+          $('.cell[data-col=' + $(this).data('col') + ']').addClass('is-up');
+        } else {
+          $('.cell[data-col=' + $(this).data('col') + ']').removeClass('is-up');
+        }
+      });
+
+      $('.col-actions .down').hover(function() {
+        $('.cell[data-col=' + $(this).data('col') + ']').addClass('tentative-down');
+      }, function() {
+        $('.cell[data-col=' + $(this).data('col') + ']').removeClass('tentative-down');
+      }).on('click', function() {
+        var count = $('.cell[data-col=' + $(this).data('col') + '].is-down').length;
+        console.log(count);
+        if (count != 6 ) {
+          $('.cell[data-col=' + $(this).data('col') + ']').removeClass('is-up');
+          $('.cell[data-col=' + $(this).data('col') + ']').addClass('is-down');
+        } else {
+          $('.cell[data-col=' + $(this).data('col') + ']').removeClass('is-down');
+        }
+      });
+
+    });
+  </script>
+	</head>
+<body>
+
+  <table id="matrix" cellspacing="0">
+    <thead>
+      <tr>
+        <td></td>
+        <td data-col="0">MON</td>
+        <td data-col="1">TUE</td>
+        <td data-col="2">WED</td>
+        <td data-col="3">THU</td>
+        <td data-col="4">FRI</td>
+        <td data-col="5">SAT</td>
+        <td data-col="6">SUN</td>
+        <td></td>
+      </tr>
+    </thead>
+
+    <tr>
+      <td class="heading">
+        <p class="title">MORNING</p>
+        <p class="subtitle">6AM - 9AM</p>
+      </td>
+      <td class="cell" data-col="0" data-row="0">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="1" data-row="0">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="2" data-row="0">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="3" data-row="0">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="4" data-row="0">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="5" data-row="0">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="6" data-row="0">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="row-actions" data-row="0">
+        <span class="up" data-row="0"></span>
+        <span class="down" data-row="0"></span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="heading" data-row="1">
+        <p class="title">LATE MORNING</p>
+        <p class="subtitle">9AM - 12PM</p>
+      </td>
+      <td class="cell" data-col="0" data-row="1">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="1" data-row="1">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="2" data-row="1">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="3" data-row="1">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="4" data-row="1">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="5" data-row="1">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="6" data-row="1">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="row-actions" data-row="1">
+        <span class="up" data-row="1"></span>
+        <span class="down" data-row="1"></span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="heading" data-row="2">
+        <p class="title">AFTERNOON</p>
+        <p class="subtitle">12PM - 4PM</p>
+      </td>
+      <td class="cell" data-col="0" data-row="2">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="1" data-row="2">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="2" data-row="2">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="3" data-row="2">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="4" data-row="2">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="5" data-row="2">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="6" data-row="2">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="row-actions" data-row="2">
+        <span class="up" data-row="2"></span>
+        <span class="down" data-row="2"></span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="heading" data-row="3">
+        <p class="title">EVENING</p>
+        <p class="subtitle">4PM - 8PM</p>
+      </td>
+      <td class="cell" data-col="0" data-row="3">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="1" data-row="3">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="2" data-row="3">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="3" data-row="3">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="4" data-row="3">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="5" data-row="3">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="6" data-row="3">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="row-actions" data-row="3">
+        <span class="up" data-row="3"></span>
+        <span class="down" data-row="3"></span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="heading" data-row="4">
+        <p class="title">NIGHT</p>
+        <p class="subtitle">8PM - 11PM</p>
+      </td>
+      <td class="cell" data-col="0" data-row="4">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="1" data-row="4">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="2" data-row="4">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="3" data-row="4">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="4" data-row="4">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="5" data-row="4">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="6" data-row="4">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="row-actions" data-row="4">
+        <span class="up" data-row="4"></span>
+        <span class="down" data-row="4"></span>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="heading" data-row="5">
+        <p class="title">LATE NIGHT</p>
+        <p class="subtitle">11PM - 4AM</p>
+      </td>
+      <td class="cell" data-col="0" data-row="5">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="1" data-row="5">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="2" data-row="5">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="3" data-row="5">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="4" data-row="5">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="5" data-row="5">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="cell" data-col="6" data-row="5">
+        <div class="up"></div>
+        <div class="down"></div>
+      </td>
+      <td class="row-actions" data-row="5">
+        <span class="up" data-row="5"></span>
+        <span class="down" data-row="5"></span>
+      </td>
+    </tr>
+
+    <tr>
+      <td></td>
+      <td class="col-actions" data-col="0">
+        <span class="up" data-col="0"></span>
+        <span class="down" data-col="0"></span>
+      </td>
+      <td class="col-actions" data-col="1">
+        <span class="up" data-col="1"></span>
+        <span class="down" data-col="1"></span>
+      </td>
+      <td class="col-actions" data-col="2">
+        <span class="up" data-col="2"></span>
+        <span class="down" data-col="2"></span>
+      </td>
+      <td class="col-actions" data-col="3">
+        <span class="up" data-col="3"></span>
+        <span class="down" data-col="3"></span>
+      </td>
+      <td class="col-actions" data-col="4">
+        <span class="up" data-col="4"></span>
+        <span class="down" data-col="4"></span>
+      </td>
+      <td class="col-actions" data-col="5">
+        <span class="up" data-col="5"></span>
+        <span class="down" data-col="5"></span>
+      </td>
+      <td class="col-actions" data-col="6">
+        <span class="up" data-col="6"></span>
+        <span class="down" data-col="6"></span>
+      </td>
+      <td></td>
+    </tr>
+
+  </table>
+
+</body>
+</html>
